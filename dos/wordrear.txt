@@ -1,0 +1,175 @@
+; Program to rearange the word in the screen to Win
+; Written for 8086 assembly language
+; e290 "MASTER"
+; e2C0 "GAMEOVER"
+; e2D0 "YOUWIN"
+
+start:
+    ; Initialize video mode and cursor position
+    mov ax, 0700h         ; Set video mode to text mode 7, page 0
+    mov bh, 07h           ; Set text attributes (white on black)
+    mov cx, 0             ; Clear CX register (not used here)
+    mov dx, 184Fh         ; Initial cursor position (row 24, column 79)
+    int 10h               ; BIOS interrupt for video
+
+display_master:
+    ; Display the string "MASTER"
+    mov bh, 00h           ; Page 0
+    mov ah, 02h           ; Function: Set cursor position
+    
+    ; Display 'M' at 0A28h
+    mov dx, 0A28h
+    int 10h
+    mov dl, 'M'
+    mov ah, 02h
+    int 21h
+
+    ; Display 'A' at 0824h
+    mov dx, 0824h
+    int 10h
+    mov dl, 'A'
+    int 21h
+
+    ; Display 'S' at 0F32h
+    mov dx, 0F32h
+    int 10h
+    mov dl, 'S'
+    int 21h
+
+    ; Display 'T' at 102Fh
+    mov dx, 102Fh
+    int 10h
+    mov dl, 'T'
+    int 21h
+
+    ; Display 'E' at 1220h
+    mov dx, 1220h
+    int 10h
+    mov dl, 'E'
+    int 21h
+
+    ; Display 'R' at 0435h
+    mov dx, 0435h
+    int 10h
+    mov dl, 'R'
+    int 21h
+
+    ; Additional cursor positioning
+    mov dx, 0C28h         ; Cursor position adjustment
+    int 10h
+
+main_loop:
+    nop                   ; No operation (placeholder)
+    call handle_input     ; Call input handler subroutine
+    mov ah, 00h
+    int 16h               ; Wait for key press
+
+    cmp ah, 50h           ; Down arrow key
+    jnz check_up
+    inc dh                ; Move cursor down
+    jmp main_loop
+
+check_up:
+    cmp ah, 48h           ; Up arrow key
+    jnz check_left
+    dec dh                ; Move cursor up
+    jmp main_loop
+
+check_left:
+    cmp ah, 4Bh           ; Left arrow key
+    jnz check_right
+    dec dl                ; Move cursor left
+    jmp main_loop
+
+check_right:
+    cmp ah, 4Dh           ; Right arrow key
+    jnz check_exit
+    inc dl                ; Move cursor right
+    jmp main_loop
+
+check_exit:
+    cmp al, 71h           ; 'q' key to exit
+    jnz check_enter
+    jmp end_program
+
+check_enter:
+    cmp ah, 1Ch           ; Enter key
+    jnz main_loop
+    call handle_input
+    ret
+
+end_program:
+    ; Display "MASTER" followed by end-of-program logic
+    mov cx, 6             ; Number of characters in "MASTER"
+    mov si, 0290h         ; Address of "MASTER"
+    mov bh, 00h           ; Page 0
+    mov ah, 08h           ; Function: Read character
+    int 10h
+
+    cmp al, [si]          ; Compare current char with target
+    jnz mismatch
+    inc si                ; Move to next character in "MASTER"
+    inc dl                ; Update cursor position
+    mov ah, 02h           ; Function: Set cursor position
+    int 10h
+    loop display_next_char
+
+display_next_char:
+    mov dx, 02D0h         ; "YOUWIN" message position
+    mov ah, 09h           ; Function: Write string
+    int 10h
+    mov ah, 4Ch           ; Terminate program
+    int 21h
+
+mismatch:
+    mov dx, 02C0h         ; "gAMEOVER" message position
+    jmp display_gameover
+
+display_gameover:
+    mov ah, 02h           ; Function: Set cursor position
+    int 10h
+    mov si, 0230h         ; Address of "gAMEOVER"
+    nop
+
+    mov cx, 8             ; Length of "gAMEOVER"
+    mov ah, 02h           ; Function: Display character
+    mov dl, [si]          ; Character to display
+    int 21h
+    inc si                ; Move to the next character
+    loop display_gameover_chars
+
+display_gameover_chars:
+    mov ah, 00h           ; Wait for key press
+    int 16h
+    mov ah, 4Ch           ; Terminate program
+    int 21h
+
+handle_input:
+    ; Subroutine for handling input
+    mov ah, 08h           ; Read character
+    mov bh, 00h           ; Page 0
+    int 10h
+    mov al, [200h]
+    jnz input_check
+    mov ax, 0920h
+    mov bx, 0
+    mov cx, 1
+    int 10h
+
+input_check:
+    mov ah, 02h
+    int 10h
+    mov ah, 08h
+    mov bh, 00h
+    int 10h
+    cmp al, 20h
+    jz return_from_input
+    ret
+
+return_from_input:
+    mov ah, 09h
+    mov al, [200h]
+    mov bx, 7
+    mov cx, 1
+    int 10h
+    ret
