@@ -1,3 +1,4 @@
+;code in .txt format
 ; Program to rearange the word in the screen to Win
 ; Written for 8086 assembly language
 ; e290 "MASTER"

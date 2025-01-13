@@ -1,0 +1,203 @@
+;code in .txt format
+;a simulation of battle ship game designed to enjoy
+;classic battleship game using asm 8086
+; Clear Screen
+.clear_screen:
+    mov ax, 0700        ; Set screen attributes (Black background, White text)
+    mov bh, 07          ; Page number
+    mov cx, 0           ; Cursor position (top-left)
+    mov dx, 184F        ; Bottom-right position
+    int 10h             ; BIOS video interrupt
+
+    mov dx, 0C28        ; Set cursor to the middle of the screen
+    mov bh, 00
+    mov ah, 02
+    int 10h
+    ret
+
+; Read Screen Character
+.read_screen:
+    mov ah, 08          ; Read character at cursor
+    mov bh, 00          ; Page number
+    int 10h
+    cmp al, '#'         ; Compare with '#'
+    jz .movement        ; Jump to movement if equal
+    cmp al, '$'         ; Compare with '$'
+    jz .movement        ; Jump to movement if equal
+    call .print_star    ; Print '*' otherwise
+    ret
+
+; Movement Logic
+.movement:
+    mov ah, 00
+    int 16h             ; Wait for keyboard input
+
+    ; Arrow key detection
+    cmp ah, 50          ; Down arrow
+    jnz .check_up
+    inc dh              ; Move down
+    jmp .next_place
+
+.check_up:
+    cmp ah, 48          ; Up arrow
+    jnz .check_left
+    dec dh              ; Move up
+    jmp .next_place
+
+.check_left:
+    cmp ah, 4B          ; Left arrow
+    jnz .check_right
+    dec dl              ; Move left
+    jmp .next_place
+
+.check_right:
+    cmp ah, 4D          ; Right arrow
+    jnz .exit_game
+    inc dl              ; Move right
+    jmp .next_place
+
+.exit_game:
+    cmp al, 'q'         ; Quit game
+    jnz .check_enter
+    mov ah, 4Ch         ; Exit program
+    int 21h
+
+.check_enter:
+    cmp ah, 1Ch         ; Enter key
+    jnz .repeat
+    call .subroutine
+    jmp .repeat
+
+.repeat:
+    ret
+
+; Print '*' Character
+.print_star:
+    mov ax, 092A        ; Set '*' character
+    mov bx, 07          ; Attribute (White on Black)
+    mov cx, 1           ; Repeat once
+    int 10h             ; BIOS video interrupt
+    ret
+
+; Print '#' Character
+.print_hash:
+    mov ax, 0923        ; Set '#' character
+    mov bx, 07
+    mov cx, 1
+    int 10h
+    ret
+
+; Print '$' Character
+.print_dollar:
+    mov ax, 0924        ; Set '$' character
+    mov bx, 07
+    mov cx, 1
+    int 10h
+    ret
+
+; Remove '*' Character
+.remove_star:
+    mov ax, 0920        ; Set space (remove character)
+    mov bx, 07
+    mov cx, 1
+    int 10h
+    ret
+
+; Next Place Logic
+.next_place:
+    mov ah, 08          ; Read character at cursor
+    mov bh, 00
+    int 10h
+    cmp al, '*'         ; If '*' is at the position
+    jnz .check_place
+    call .remove_star   ; Remove '*'
+    call .print_star    ; Print at new position
+    jmp .movement
+
+.check_place:
+    cmp al, '#'         ; If '#' is present
+    jz .end
+    cmp al, '$'         ; If '$' is present
+    jz .end
+    call .print_star    ; Otherwise print '*'
+.end:
+    ret
+
+; Enter Key Handling
+.enter_key:
+    mov si, 200h        ; Load memory address
+    mov ax, [si]        ; Load value
+    cmp ax, dx          ; Compare with cursor position
+    jnz .not_equal
+    call .print_dollar  ; Print '$' if equal
+    ret
+
+.not_equal:
+    add si, 2
+    mov cx, [255h]
+    dec cx
+    mov [225h], cx
+    jnz .enter_key
+    ret
+
+; Subroutine Logic
+.subroutine:
+    call .remove_star
+    call .enter_key
+    ret
+
+; Horizontal Border Drawing
+.horizontal_border:
+    ; Draw Top Border
+    mov dx, 0419h
+    mov ah, 02
+    mov bh, 00
+    int 10h
+    mov ax, 0923h
+    mov bx, 07
+    mov cx, 20         ; Draw 20 characters
+    int 10h
+
+    ; Draw Bottom Border
+    mov dx, 1419h
+    mov ah, 02
+    mov bh, 00
+    int 10h
+    mov ax, 0923h
+    mov bx, 07
+    mov cx, 20
+    int 10h
+
+    ; Draw Left Border
+    mov dx, 0519h
+.draw_left:
+    mov ah, 02
+    mov bh, 00
+    int 10h
+    cmp dh, 14
+    jz .left_done
+    mov dl, 23
+    int 21h
+    inc dh
+    jmp .draw_left
+
+.left_done:
+    ; Draw Right Border
+    mov dx, 0539h
+.draw_right:
+    mov ah, 02
+    mov bh, 00
+    int 10h
+    cmp dh, 14
+    jz .right_done
+    mov dl, 23
+    int 21h
+    inc dh
+    jmp .draw_right
+
+.right_done:
+    mov ah, 00
+    int 16h
+    mov ah, 4Ch
+    int 21h
+    ret
